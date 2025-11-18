@@ -12,6 +12,7 @@
 #include <sound/jack.h>
 #include <linux/input-event-codes.h>
 #include "qdsp6/q6afe.h"
+#include "qdsp6/q6prm.h"
 #include "common.h"
 #include "sdw.h"
 
@@ -114,6 +115,30 @@ static int sc8280xp_snd_hw_params(struct snd_pcm_substream *substream,
 	struct snd_soc_pcm_runtime *rtd = snd_soc_substream_to_rtd(substream);
 	struct snd_soc_dai *cpu_dai = snd_soc_rtd_to_cpu(rtd, 0);
 	struct sc8280xp_snd_data *pdata = snd_soc_card_get_drvdata(rtd->card);
+	int ret = 0;
+
+	switch (cpu_dai->id) {
+	case PRIMARY_MI2S_RX...PRIMARY_MI2S_TX:
+		ret = snd_soc_dai_set_sysclk(cpu_dai, Q6PRM_LPASS_CLK_ID_MCLK_1, 12288000, SND_SOC_CLOCK_IN);
+		break;
+	case SECONDARY_MI2S_RX...SECONDARY_MI2S_TX:
+		ret = snd_soc_dai_set_sysclk(cpu_dai, Q6PRM_LPASS_CLK_ID_MCLK_2, 12288000, SND_SOC_CLOCK_IN);
+		break;
+	case TERTIARY_MI2S_RX...TERTIARY_MI2S_TX:
+		ret = snd_soc_dai_set_sysclk(cpu_dai, Q6PRM_LPASS_CLK_ID_MCLK_3, 12288000, SND_SOC_CLOCK_IN);
+		break;
+	case QUATERNARY_MI2S_RX...QUATERNARY_MI2S_TX:
+		ret = snd_soc_dai_set_sysclk(cpu_dai, Q6PRM_LPASS_CLK_ID_MCLK_4, 12288000, SND_SOC_CLOCK_IN);
+		break;
+	case QUINARY_MI2S_RX...QUINARY_MI2S_TX:
+		ret = snd_soc_dai_set_sysclk(cpu_dai, Q6PRM_LPASS_CLK_ID_MCLK_5, 12288000, SND_SOC_CLOCK_IN);
+		break;
+	default:
+		break;
+	}
+
+	if (ret < 0)
+		dev_err(rtd->dev, "snd_soc_dai_set_sysclk err = %d\n", ret);
 
 	return qcom_snd_sdw_hw_params(substream, params, &pdata->sruntime[cpu_dai->id]);
 }
