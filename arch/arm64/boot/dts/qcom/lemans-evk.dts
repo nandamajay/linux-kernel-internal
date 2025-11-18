@@ -587,6 +587,24 @@
 	status = "okay";
 };
 
+&q6apmbedai {
+	dai@16 {
+		reg = <PRIMARY_MI2S_RX>;
+		clocks = <&q6prmcc LPASS_CLK_ID_MCLK_1 LPASS_CLK_ATTRIBUTE_COUPLE_NO>,
+			 <&q6prmcc LPASS_CLK_ID_PRI_MI2S_IBIT LPASS_CLK_ATTRIBUTE_COUPLE_NO>,
+			 <&q6prmcc LPASS_CLK_ID_PRI_MI2S_EBIT LPASS_CLK_ATTRIBUTE_COUPLE_NO>;
+		clock-names = "mclk", "bclk", "eclk";
+	};
+
+	dai@21 {
+		reg = <TERTIARY_MI2S_TX>;
+		clocks = <&q6prmcc LPASS_CLK_ID_MCLK_1 LPASS_CLK_ATTRIBUTE_COUPLE_NO>,
+			 <&q6prmcc LPASS_CLK_ID_TER_MI2S_IBIT LPASS_CLK_ATTRIBUTE_COUPLE_NO>,
+			 <&q6prmcc LPASS_CLK_ID_TER_MI2S_EBIT LPASS_CLK_ATTRIBUTE_COUPLE_NO>;
+		clock-names = "mclk", "bclk", "eclk";
+	};
+};
+
 &qupv3_id_0 {
 	status = "okay";
 };
