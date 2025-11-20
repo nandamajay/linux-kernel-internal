@@ -12,8 +12,146 @@
 #include <sound/jack.h>
 #include <linux/input-event-codes.h>
 #include "qdsp6/q6afe.h"
+#include "qdsp6/q6prm.h"
 #include "common.h"
 #include "sdw.h"
+
+static struct snd_soc_dapm_widget qcs9100_dapm_widgets[] = {
+	SND_SOC_DAPM_HP("Headphone Jack", NULL),
+	SND_SOC_DAPM_MIC("Mic Jack", NULL),
+	SND_SOC_DAPM_SPK("DP0 Jack", NULL),
+	SND_SOC_DAPM_SPK("DP1 Jack", NULL),
+	SND_SOC_DAPM_SPK("DP2 Jack", NULL),
+	SND_SOC_DAPM_SPK("DP3 Jack", NULL),
+	SND_SOC_DAPM_SPK("DP4 Jack", NULL),
+	SND_SOC_DAPM_SPK("DP5 Jack", NULL),
+	SND_SOC_DAPM_SPK("DP6 Jack", NULL),
+	SND_SOC_DAPM_SPK("DP7 Jack", NULL),
+};
+
+static struct snd_soc_dapm_route qcs9100_dapm_routes[] = {
+};
+
+struct snd_soc_common {
+	char *driver_name;
+	const struct snd_soc_dapm_widget *dapm_widgets;
+	int num_dapm_widgets;
+	const struct snd_soc_dapm_route *dapm_routes;
+	int num_dapm_routes;
+	int mi2s_dai_fmt;
+	int jack_dai_id;
+	bool mi2s_mclk_enable;
+};
+
+static struct snd_soc_common qcs9100_priv_data = {
+	.driver_name = "sa8775p",
+	.dapm_widgets = qcs9100_dapm_widgets,
+	.num_dapm_widgets = ARRAY_SIZE(qcs9100_dapm_widgets),
+	.dapm_routes = qcs9100_dapm_routes,
+	.num_dapm_routes = ARRAY_SIZE(qcs9100_dapm_routes),
+	.mi2s_dai_fmt = SND_SOC_DAIFMT_BP_FP,
+	.jack_dai_id = QUINARY_MI2S_RX,
+	.mi2s_mclk_enable = true,
+};
+
+static struct snd_soc_common qcm6490_priv_data = {
+    .driver_name = "qcm6490",
+    .dapm_widgets = qcs9100_dapm_widgets,
+    .num_dapm_widgets = ARRAY_SIZE(qcs9100_dapm_widgets),
+    .dapm_routes = qcs9100_dapm_routes,
+    .num_dapm_routes = ARRAY_SIZE(qcs9100_dapm_routes),
+    .mi2s_dai_fmt = SND_SOC_DAIFMT_BP_FP,
+    .jack_dai_id = TX_CODEC_DMA_TX_3,
+    .mi2s_mclk_enable = true,
+};
+
+static struct snd_soc_common qcs6490_priv_data = {
+    .driver_name = "qcs6490",
+    .dapm_widgets = qcs9100_dapm_widgets,
+    .num_dapm_widgets = ARRAY_SIZE(qcs9100_dapm_widgets),
+    .dapm_routes = qcs9100_dapm_routes,
+    .num_dapm_routes = ARRAY_SIZE(qcs9100_dapm_routes),
+    .mi2s_dai_fmt = SND_SOC_DAIFMT_BP_FP,
+    .jack_dai_id = QUINARY_MI2S_RX,
+    .mi2s_mclk_enable = true,
+};
+
+static struct snd_soc_common qcs615_priv_data = {
+    .driver_name = "qcs6490",
+    .dapm_widgets = qcs9100_dapm_widgets,
+    .num_dapm_widgets = ARRAY_SIZE(qcs9100_dapm_widgets),
+    .dapm_routes = qcs9100_dapm_routes,
+    .num_dapm_routes = ARRAY_SIZE(qcs9100_dapm_routes),
+    .mi2s_dai_fmt = SND_SOC_DAIFMT_BP_FP,
+    .jack_dai_id = QUINARY_MI2S_RX,
+    .mi2s_mclk_enable = true,
+};
+
+static struct snd_soc_common qcs8275_priv_data = {
+    .driver_name = "qcs8300",
+    .dapm_widgets = qcs9100_dapm_widgets,
+    .num_dapm_widgets = ARRAY_SIZE(qcs9100_dapm_widgets),
+    .dapm_routes = qcs9100_dapm_routes,
+    .num_dapm_routes = ARRAY_SIZE(qcs9100_dapm_routes),
+    .mi2s_dai_fmt = SND_SOC_DAIFMT_BP_FP,
+    .jack_dai_id = QUINARY_MI2S_RX,
+    .mi2s_mclk_enable = true,
+};
+
+static struct snd_soc_common sc8280xp_priv_data = {
+    .driver_name = "sc8280xp",
+    .dapm_widgets = qcs9100_dapm_widgets,
+    .num_dapm_widgets = ARRAY_SIZE(qcs9100_dapm_widgets),
+    .dapm_routes = qcs9100_dapm_routes,
+    .num_dapm_routes = ARRAY_SIZE(qcs9100_dapm_routes),
+    .mi2s_dai_fmt = SND_SOC_DAIFMT_BP_FP,
+    .jack_dai_id = TX_CODEC_DMA_TX_3,
+    .mi2s_mclk_enable = true,
+};
+
+static struct snd_soc_common sm8450_priv_data = {
+    .driver_name = "sm8450",
+    .dapm_widgets = qcs9100_dapm_widgets,
+    .num_dapm_widgets = ARRAY_SIZE(qcs9100_dapm_widgets),
+    .dapm_routes = qcs9100_dapm_routes,
+    .num_dapm_routes = ARRAY_SIZE(qcs9100_dapm_routes),
+    .mi2s_dai_fmt = SND_SOC_DAIFMT_BP_FP,
+    .jack_dai_id = TX_CODEC_DMA_TX_3,
+    .mi2s_mclk_enable = true,
+};
+
+static struct snd_soc_common sm8550_priv_data = {
+    .driver_name = "sm8550",
+    .dapm_widgets = qcs9100_dapm_widgets,
+    .num_dapm_widgets = ARRAY_SIZE(qcs9100_dapm_widgets),
+    .dapm_routes = qcs9100_dapm_routes,
+    .num_dapm_routes = ARRAY_SIZE(qcs9100_dapm_routes),
+    .mi2s_dai_fmt = SND_SOC_DAIFMT_BP_FP,
+    .jack_dai_id = TX_CODEC_DMA_TX_3,
+    .mi2s_mclk_enable = true,
+};
+
+static struct snd_soc_common sm8650_priv_data = {
+    .driver_name = "sm8650",
+    .dapm_widgets = qcs9100_dapm_widgets,
+    .num_dapm_widgets = ARRAY_SIZE(qcs9100_dapm_widgets),
+    .dapm_routes = qcs9100_dapm_routes,
+    .num_dapm_routes = ARRAY_SIZE(qcs9100_dapm_routes),
+    .mi2s_dai_fmt = SND_SOC_DAIFMT_BP_FP,
+    .jack_dai_id = TX_CODEC_DMA_TX_3,
+    .mi2s_mclk_enable = true,
+};
+
+static struct snd_soc_common sm8750_priv_data = {
+    .driver_name = "sm8750",
+    .dapm_widgets = qcs9100_dapm_widgets,
+    .num_dapm_widgets = ARRAY_SIZE(qcs9100_dapm_widgets),
+    .dapm_routes = qcs9100_dapm_routes,
+    .num_dapm_routes = ARRAY_SIZE(qcs9100_dapm_routes),
+    .mi2s_dai_fmt = SND_SOC_DAIFMT_BP_FP,
+    .jack_dai_id = TX_CODEC_DMA_TX_3,
+    .mi2s_mclk_enable = true,
+};
 
 struct sc8280xp_snd_data {
 	bool stream_prepared[AFE_PORT_MAX];
@@ -21,6 +159,7 @@ struct sc8280xp_snd_data {
 	struct sdw_stream_runtime *sruntime[AFE_PORT_MAX];
 	struct snd_soc_jack jack;
 	struct snd_soc_jack dp_jack[8];
+	struct snd_soc_common *snd_soc_common_priv;
 	bool jack_setup;
 };
 
@@ -35,7 +174,10 @@ static int sc8280xp_snd_init(struct snd_soc_pcm_runtime *rtd)
 	switch (cpu_dai->id) {
 	case PRIMARY_MI2S_RX...QUATERNARY_MI2S_TX:
 	case QUINARY_MI2S_RX...QUINARY_MI2S_TX:
-		snd_soc_dai_set_fmt(cpu_dai, SND_SOC_DAIFMT_BP_FP);
+	    if (data->snd_soc_common_priv->mi2s_dai_fmt)
+		    snd_soc_dai_set_fmt(cpu_dai, data->snd_soc_common_priv->mi2s_dai_fmt);
+	    else
+		    snd_soc_dai_set_fmt(cpu_dai, SND_SOC_DAIFMT_BP_FP);
 		break;
 	case WSA_CODEC_DMA_RX_0:
 	case WSA_CODEC_DMA_RX_1:
@@ -65,7 +207,11 @@ static int sc8280xp_snd_init(struct snd_soc_pcm_runtime *rtd)
 	if (dp_jack)
 		return qcom_snd_dp_jack_setup(rtd, dp_jack, dp_pcm_id);
 
-	return qcom_snd_wcd_jack_setup(rtd, &data->jack, &data->jack_setup);
+	if (data->snd_soc_common_priv->jack_dai_id)
+		return qcom_snd_jack_setup(rtd, &data->jack, &data->jack_setup,
+					   data->snd_soc_common_priv->jack_dai_id);
+
+	return 0;
 }
 
 static void sc8280xp_snd_shutdown(struct snd_pcm_substream *substream)
@@ -114,6 +260,32 @@ static int sc8280xp_snd_hw_params(struct snd_pcm_substream *substream,
 	struct snd_soc_pcm_runtime *rtd = snd_soc_substream_to_rtd(substream);
 	struct snd_soc_dai *cpu_dai = snd_soc_rtd_to_cpu(rtd, 0);
 	struct sc8280xp_snd_data *pdata = snd_soc_card_get_drvdata(rtd->card);
+	int ret = 0;
+
+	if (pdata->snd_soc_common_priv->mi2s_mclk_enable) {
+		switch (cpu_dai->id) {
+		case PRIMARY_MI2S_RX...PRIMARY_MI2S_TX:
+			ret = snd_soc_dai_set_sysclk(cpu_dai, Q6PRM_LPASS_CLK_ID_MCLK_1, 12288000, SND_SOC_CLOCK_IN);
+			break;
+		case SECONDARY_MI2S_RX...SECONDARY_MI2S_TX:
+			ret = snd_soc_dai_set_sysclk(cpu_dai, Q6PRM_LPASS_CLK_ID_MCLK_2, 12288000, SND_SOC_CLOCK_IN);
+			break;
+		case TERTIARY_MI2S_RX...TERTIARY_MI2S_TX:
+			ret = snd_soc_dai_set_sysclk(cpu_dai, Q6PRM_LPASS_CLK_ID_MCLK_3, 12288000, SND_SOC_CLOCK_IN);
+			break;
+		case QUATERNARY_MI2S_RX...QUATERNARY_MI2S_TX:
+			ret = snd_soc_dai_set_sysclk(cpu_dai, Q6PRM_LPASS_CLK_ID_MCLK_4, 12288000, SND_SOC_CLOCK_IN);
+			break;
+		case QUINARY_MI2S_RX...QUINARY_MI2S_TX:
+			ret = snd_soc_dai_set_sysclk(cpu_dai, Q6PRM_LPASS_CLK_ID_MCLK_5, 12288000, SND_SOC_CLOCK_IN);
+			break;
+		default:
+			break;
+		}
+
+		if (ret < 0)
+			dev_err(rtd->dev, "snd_soc_dai_set_sysclk err = %d\n", ret);
+	}
 
 	return qcom_snd_sdw_hw_params(substream, params, &pdata->sruntime[cpu_dai->id]);
 }
@@ -172,36 +344,45 @@ static int sc8280xp_platform_probe(struct platform_device *pdev)
 	card = devm_kzalloc(dev, sizeof(*card), GFP_KERNEL);
 	if (!card)
 		return -ENOMEM;
-	card->owner = THIS_MODULE;
-	/* Allocate the private data */
+
 	data = devm_kzalloc(dev, sizeof(*data), GFP_KERNEL);
-	if (!data)
+	if (!data) {
+		return -ENOMEM;
+	}
+
+	data->snd_soc_common_priv = (struct snd_soc_common *)of_device_get_match_data(dev);
+	if (!data->snd_soc_common_priv)
 		return -ENOMEM;
 
 	card->dev = dev;
 	dev_set_drvdata(dev, card);
 	snd_soc_card_set_drvdata(card, data);
+	card->dapm_widgets = data->snd_soc_common_priv->dapm_widgets;
+	card->num_dapm_widgets = data->snd_soc_common_priv->num_dapm_widgets;
+	card->dapm_routes = data->snd_soc_common_priv->dapm_routes;
+	card->num_dapm_routes = data->snd_soc_common_priv->num_dapm_routes;
+
 	ret = qcom_snd_parse_of(card);
 	if (ret)
 		return ret;
 
-	card->driver_name = of_device_get_match_data(dev);
+	card->driver_name = data->snd_soc_common_priv->driver_name;
 	sc8280xp_add_be_ops(card);
 	return devm_snd_soc_register_card(dev, card);
 }
 
 static const struct of_device_id snd_sc8280xp_dt_match[] = {
-	{.compatible = "qcom,qcm6490-idp-sndcard", "qcm6490"},
-	{.compatible = "qcom,qcs615-sndcard", "qcs615"},
-	{.compatible = "qcom,qcs6490-rb3gen2-sndcard", "qcs6490"},
-	{.compatible = "qcom,qcs8275-sndcard", "qcs8300"},
-	{.compatible = "qcom,qcs9075-sndcard", "sa8775p"},
-	{.compatible = "qcom,qcs9100-sndcard", "sa8775p"},
-	{.compatible = "qcom,sc8280xp-sndcard", "sc8280xp"},
-	{.compatible = "qcom,sm8450-sndcard", "sm8450"},
-	{.compatible = "qcom,sm8550-sndcard", "sm8550"},
-	{.compatible = "qcom,sm8650-sndcard", "sm8650"},
-	{.compatible = "qcom,sm8750-sndcard", "sm8750"},
+	{.compatible = "qcom,qcm6490-idp-sndcard", .data=&qcm6490_priv_data},
+	{.compatible = "qcom,qcs615-sndcard", .data=&qcs6490_priv_data},
+	{.compatible = "qcom,qcs6490-rb3gen2-sndcard", .data=&qcs6490_priv_data},
+	{.compatible = "qcom,qcs8275-sndcard", .data=&qcs8275_priv_data},
+	{.compatible = "qcom,qcs9075-sndcard", .data=&qcs9100_priv_data},
+	{.compatible = "qcom,qcs9100-sndcard", .data=&qcs9100_priv_data},
+	{.compatible = "qcom,sc8280xp-sndcard", .data=&sc8280xp_priv_data},
+	{.compatible = "qcom,sm8450-sndcard", .data=&sm8450_priv_data},
+	{.compatible = "qcom,sm8550-sndcard", .data=&sm8550_priv_data},
+	{.compatible = "qcom,sm8650-sndcard", .data=&sm8650_priv_data},
+	{.compatible = "qcom,sm8750-sndcard", .data=&sm8750_priv_data},
 	{}
 };
 
