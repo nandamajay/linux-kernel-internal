@@ -22,7 +22,6 @@
 
 #define MAX_NR_GPIO		32
 #define GPIO_FUNC		0
-#define MAX_LPI_NUM_CLKS	2
 
 struct lpi_pinctrl {
 	struct device *dev;
@@ -31,7 +30,8 @@ struct lpi_pinctrl {
 	struct pinctrl_desc desc;
 	char __iomem *tlmm_base;
 	char __iomem *slew_base;
-	struct clk_bulk_data clks[MAX_LPI_NUM_CLKS];
+	struct clk *core_clk;
+	struct clk *audio_clk;
 	/* Protects from concurrent register updates */
 	struct mutex lock;
 	DECLARE_BITMAP(ever_gpio, MAX_NR_GPIO);
@@ -463,9 +463,6 @@ int lpi_pinctrl_probe(struct platform_device *pdev)
 	pctrl->data = data;
 	pctrl->dev = &pdev->dev;
 
-	pctrl->clks[0].id = "core";
-	pctrl->clks[1].id = "audio";
-
 	pctrl->tlmm_base = devm_platform_ioremap_resource(pdev, 0);
 	if (IS_ERR(pctrl->tlmm_base))
 		return dev_err_probe(dev, PTR_ERR(pctrl->tlmm_base),
@@ -478,13 +475,27 @@ int lpi_pinctrl_probe(struct platform_device *pdev)
 					     "Slew resource not provided\n");
 	}
 
-	ret = devm_clk_bulk_get_optional(dev, MAX_LPI_NUM_CLKS, pctrl->clks);
-	if (ret)
-		return ret;
+	pctrl->core_clk = devm_clk_get_optional(dev, "core");
+	if (IS_ERR(pctrl->core_clk))
+		return dev_err_probe(dev, PTR_ERR(pctrl->core_clk),
+				     "core clock not provided\n");
 
-	ret = clk_bulk_prepare_enable(MAX_LPI_NUM_CLKS, pctrl->clks);
+	pctrl->audio_clk = devm_clk_get_optional(dev, "audio");
+	if (IS_ERR(pctrl->audio_clk))
+		return dev_err_probe(dev, PTR_ERR(pctrl->audio_clk),
+				     "failed to get optional audio clock\n");
+
+	ret = clk_prepare_enable(pctrl->core_clk);
 	if (ret)
-		return dev_err_probe(dev, ret, "Can't enable clocks\n");
+		return dev_err_probe(dev, ret, "Can't enable core clock\n");
+
+	if (pctrl->audio_clk) {
+		ret = clk_prepare_enable(pctrl->audio_clk);
+		if (ret) {
+			clk_disable_unprepare(pctrl->core_clk);
+			return dev_err_probe(dev, ret, "Can't enable audio clock\n");
+		}
+	}
 
 	pctrl->desc.pctlops = &lpi_gpio_pinctrl_ops;
 	pctrl->desc.pmxops = &lpi_gpio_pinmux_ops;
@@ -523,7 +534,9 @@ int lpi_pinctrl_probe(struct platform_device *pdev)
 
 err_pinctrl:
 	mutex_destroy(&pctrl->lock);
-	clk_bulk_disable_unprepare(MAX_LPI_NUM_CLKS, pctrl->clks);
+	if (pctrl->audio_clk)
+		clk_disable_unprepare(pctrl->audio_clk);
+	clk_disable_unprepare(pctrl->core_clk);
 
 	return ret;
 }
@@ -535,7 +548,9 @@ void lpi_pinctrl_remove(struct platform_device *pdev)
 	int i;
 
 	mutex_destroy(&pctrl->lock);
-	clk_bulk_disable_unprepare(MAX_LPI_NUM_CLKS, pctrl->clks);
+	if (pctrl->audio_clk)
+		clk_disable_unprepare(pctrl->audio_clk);
+	clk_disable_unprepare(pctrl->core_clk);
 
 	for (i = 0; i < pctrl->data->npins; i++)
 		pinctrl_generic_remove_group(pctrl->ctrl, i);
