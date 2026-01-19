@@ -273,6 +273,14 @@ static const struct snd_soc_dai_ops q6hdmi_ops = {
 	.set_fmt	= q6i2s_set_fmt,
 };
 
+static const struct snd_soc_dai_ops q6tdm_ops = {
+        .prepare        = q6apm_lpass_dai_prepare,
+        .startup        = q6apm_lpass_dai_startup,
+        .shutdown       = q6apm_lpass_dai_shutdown,
+        .set_channel_map  = q6dma_set_channel_map,
+        .hw_params        = q6i2s_set_fmt,
+};
+
 static const struct snd_soc_component_driver q6apm_lpass_dai_component = {
 	.name = "q6apm-be-dai-component",
 	.of_xlate_dai_name = q6dsp_audio_ports_of_xlate_dai_name,
@@ -298,6 +306,7 @@ static int q6apm_lpass_dai_dev_probe(struct platform_device *pdev)
 	cfg.q6i2s_ops = &q6i2s_ops;
 	cfg.q6dma_ops = &q6dma_ops;
 	cfg.q6hdmi_ops = &q6hdmi_ops;
+	cfg.q6tdm_ops = &q6tdm_ops;
 	dais = q6dsp_audio_ports_set_config(dev, &cfg, &num_dais);
 
 	return devm_snd_soc_register_component(dev, &q6apm_lpass_dai_component, dais, num_dais);
