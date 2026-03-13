@@ -492,7 +492,7 @@ static void zloop_rw(struct zloop_cmd *cmd)
 	if (rq->bio != rq->biotail) {
 		struct bio_vec *bvec;
 
-		cmd->bvec = kmalloc_array(nr_bvec, sizeof(*cmd->bvec), GFP_NOIO);
+		cmd->bvec = kmalloc_objs(*cmd->bvec, nr_bvec, GFP_NOIO);
 		if (!cmd->bvec) {
 			ret = -EIO;
 			goto unlock;
@@ -542,6 +542,21 @@ out:
 	zloop_put_cmd(cmd);
 }
 
+/*
+ * Sync the entire FS containing the zone files instead of walking all files.
+ */
+static int zloop_flush(struct zloop_device *zlo)
+{
+	struct super_block *sb = file_inode(zlo->data_dir)->i_sb;
+	int ret;
+
+	down_read(&sb->s_umount);
+	ret = sync_filesystem(sb);
+	up_read(&sb->s_umount);
+
+	return ret;
+}
+
 static void zloop_handle_cmd(struct zloop_cmd *cmd)
 {
 	struct request *rq = blk_mq_rq_from_pdu(cmd);
@@ -562,11 +577,7 @@ static void zloop_handle_cmd(struct zloop_cmd *cmd)
 		zloop_rw(cmd);
 		return;
 	case REQ_OP_FLUSH:
-		/*
-		 * Sync the entire FS containing the zone files instead of
-		 * walking all files
-		 */
-		cmd->ret = sync_filesystem(file_inode(zlo->data_dir)->i_sb);
+		cmd->ret = zloop_flush(zlo);
 		break;
 	case REQ_OP_ZONE_RESET:
 		cmd->ret = zloop_reset_zone(zlo, rq_zone_no(rq));
@@ -697,7 +708,7 @@ static blk_status_t zloop_queue_rq(struct blk_mq_hw_ctx *hctx,
 	struct zloop_cmd *cmd = blk_mq_rq_to_pdu(rq);
 	struct zloop_device *zlo = rq->q->queuedata;
 
-	if (zlo->state == Zlo_deleting)
+	if (data_race(READ_ONCE(zlo->state)) == Zlo_deleting)
 		return BLK_STS_IOERR;
 
 	/*
@@ -981,7 +992,8 @@ static int zloop_ctl_add(struct zloop_options *opts)
 	struct queue_limits lim = {
 		.max_hw_sectors		= SZ_1M >> SECTOR_SHIFT,
 		.chunk_sectors		= opts->zone_size,
-		.features		= BLK_FEAT_ZONED,
+		.features		= BLK_FEAT_ZONED | BLK_FEAT_WRITE_CACHE,
+
 	};
 	unsigned int nr_zones, i, j;
 	struct zloop_device *zlo;
@@ -997,12 +1009,12 @@ static int zloop_ctl_add(struct zloop_options *opts)
 		goto out;
 	}
 
-	zlo = kvzalloc(struct_size(zlo, zones, nr_zones), GFP_KERNEL);
+	zlo = kvzalloc_flex(*zlo, zones, nr_zones);
 	if (!zlo) {
 		ret = -ENOMEM;
 		goto out;
 	}
-	zlo->state = Zlo_creating;
+	WRITE_ONCE(zlo->state, Zlo_creating);
 
 	ret = mutex_lock_killable(&zloop_ctl_mutex);
 	if (ret)
@@ -1113,7 +1125,7 @@ static int zloop_ctl_add(struct zloop_options *opts)
 	}
 
 	mutex_lock(&zloop_ctl_mutex);
-	zlo->state = Zlo_live;
+	WRITE_ONCE(zlo->state, Zlo_live);
 	mutex_unlock(&zloop_ctl_mutex);
 
 	pr_info("zloop: device %d, %u zones of %llu MiB, %u B block size\n",
@@ -1162,7 +1174,12 @@ static int zloop_ctl_remove(struct zloop_options *opts)
 	int ret;
 
 	if (!(opts->mask & ZLOOP_OPT_ID)) {
-		pr_err("No ID specified\n");
+		pr_err("No ID specified for remove\n");
+		return -EINVAL;
+	}
+
+	if (opts->mask & ~ZLOOP_OPT_ID) {
+		pr_err("Invalid option specified for remove\n");
 		return -EINVAL;
 	}
 
@@ -1177,7 +1194,7 @@ static int zloop_ctl_remove(struct zloop_options *opts)
 		ret = -EINVAL;
 	} else {
 		idr_remove(&zloop_index_idr, zlo->id);
-		zlo->state = Zlo_deleting;
+		WRITE_ONCE(zlo->state, Zlo_deleting);
 	}
 
 	mutex_unlock(&zloop_ctl_mutex);
