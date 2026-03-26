@@ -1149,6 +1149,22 @@
 			sound-dai = <&q6apm>;
 		};
 	};
+
+	dp-dai-link {
+		link-name = "DISPLAY_PORT-RX";
+
+		codec {
+			sound-dai = <&mdss_dp>;
+		};
+
+		cpu {
+			sound-dai = <&q6apmbedai DISPLAY_PORT_RX_0>;
+		};
+
+		platform {
+			sound-dai = <&q6apm>;
+		};
+	};
 };
 
 &swr2 {
