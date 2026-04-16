@@ -160,6 +160,8 @@ struct qcom_swrm_port_config {
 	u8 word_length;
 	u8 blk_group_count;
 	u8 lane_control;
+	u8 tx_ch_mask;
+	u8 rx_ch_mask;
 };
 
 /*
@@ -1109,12 +1111,27 @@ static int qcom_swrm_port_enable(struct sdw_bus *bus,
 {
 	u32 reg;
 	struct qcom_swrm_ctrl *ctrl = to_qcom_sdw(bus);
+	struct qcom_swrm_port_config *pcfg;
+	u32 ch_mask = SWR_INVALID_PARAM;
 	u32 val;
 	u32 offset = ctrl->reg_layout[SWRM_OFFSET_DP_PORT_CTRL_BANK];
 
 	reg = SWRM_DPn_PORT_CTRL_BANK(offset, enable_ch->port_num, bank);
 
 	ctrl->reg_read(ctrl, reg, &val);
+	pcfg = &ctrl->pconfig[enable_ch->port_num];
+
+	/*
+	 * Prefer explicitly programmed channel mask.
+	 * TX/RX are mutually exclusive per port enable call.
+	 */
+	if (pcfg->tx_ch_mask && pcfg->tx_ch_mask != SWR_INVALID_PARAM)
+		ch_mask = pcfg->tx_ch_mask;
+	else if (pcfg->rx_ch_mask && pcfg->rx_ch_mask != SWR_INVALID_PARAM)
+		ch_mask = pcfg->rx_ch_mask;
+
+	if (ch_mask != SWR_INVALID_PARAM)
+		enable_ch->ch_mask = ch_mask;
 
 	if (enable_ch->enable)
 		val |= (enable_ch->ch_mask << SWRM_DP_PORT_CTRL_EN_CHAN_SHFT);
@@ -1334,6 +1351,33 @@ static void *qcom_swrm_get_sdw_stream(struct snd_soc_dai *dai, int direction)
 	return ctrl->sruntime[dai->id];
 }
 
+static int qcom_swrm_set_channel_map(struct snd_soc_dai *dai,
+				     unsigned int tx_num, const unsigned int *tx_slot,
+				     unsigned int rx_num, const unsigned int *rx_slot)
+{
+	struct qcom_swrm_ctrl *ctrl = dev_get_drvdata(dai->dev);
+	unsigned int i, max_ports;
+
+	if (!ctrl)
+		return -ENODEV;
+
+	max_ports = ctrl->nports;
+
+	if (tx_slot) {
+		if (tx_num > max_ports)
+			for (i = 0; i < min(tx_num, max_ports); i++)
+				ctrl->pconfig[i].tx_ch_mask = tx_slot[i];
+	}
+
+	if (rx_slot) {
+		if (rx_num > max_ports)
+			for (i = 0; i < min(rx_num, max_ports); i++)
+				ctrl->pconfig[i].rx_ch_mask = rx_slot[i];
+	}
+
+	return 0;
+}
+
 static int qcom_swrm_startup(struct snd_pcm_substream *substream,
 			     struct snd_soc_dai *dai)
 {
@@ -1370,6 +1414,7 @@ static const struct snd_soc_dai_ops qcom_swrm_pdm_dai_ops = {
 	.shutdown = qcom_swrm_shutdown,
 	.set_stream = qcom_swrm_set_sdw_stream,
 	.get_stream = qcom_swrm_get_sdw_stream,
+	.set_channel_map = qcom_swrm_set_channel_map,
 };
 
 static const struct snd_soc_component_driver qcom_swrm_dai_component = {
